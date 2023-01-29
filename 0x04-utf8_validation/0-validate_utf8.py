@@ -1,52 +1,86 @@
 #!/usr/bin/python3
+
 """
-validUTF8(data) function that validates whether a
-string of ints represents a valid UTF-8 encoding.
+Module 0-validate_utf8
 """
-from itertools import takewhile
 
 
-def int_to_bits(nums):
+def validUTF8_v1(data):
     """
-    Helper function
-    Convert ints to bits
+    Determines if a given data set
+    represents a valid UTF-8 encoding
     """
-    for num in nums:
-        bits = []
-        mask = 1 << 8  # cause we have 8 bits per byte. adds up to (11111111)
-        while mask:
-            mask >>= 1
-            bits.append(bool(num & mask))
-        yield bits
+    count = 0
+
+    if not data:
+        return False
+
+    for num in data:
+        bin_rep = format(num, '#010b')[-8:]
+
+        if count == 0:
+            for bit in bin_rep:
+                if bit == '0':
+                    break
+                count += 1
+
+            if count == 0:
+                continue
+
+            if count == 1 or count > 4:
+                return False
+        else:
+            if not (bin_rep[0] == '1' and bin_rep[1] == '0'):
+                return False
+    return count == 0
 
 
 def validUTF8(data):
-    """
-    Takes a list of ints and returns true if the list is
-    a valid UTF-8 encoding, else returns false
-    Args:
-        data : List of ints representing possible UTF-8 encoding
-    Return:
-        bool : True or False
-    """
-    bits = int_to_bits(data)
-    for byte in bits:
-        # if single byte char, then valid. continue
-        if byte[0] == 0:
-            continue
+    count = 0
 
-        # if here, byte is multi-byte char
-        ones = sum(takewhile(bool, byte))
-        if ones <= 1:
-            return False
-        if ones >= 4:  # UTF-8 can be 1 to 4 bytes long
-            return False
+    if data is None:
+        return False
 
-        for _ in range(ones - 1):
-            try:
-                byte = next(bits)
-            except StopIteration:
+    for num in data:
+        if count == 0:
+            if num & 128 == 0:
+                count = 0
+            elif num & 224 == 192:
+                count = 1
+            elif num & 240 == 224:
+                count = 2
+            elif num & 248 == 240:
+                count = 3
+            else:
                 return False
-            if byte[0:2] != [1, 0]:
+        else:
+            if num & 192 != 128:
                 return False
-    return True
+    if count == 0:
+        return True
+    return False
+
+
+def validUTF8_v4(data):
+    n_bytes = 0
+
+    mask1 = 1 << 7
+    mask2 = 1 << 6
+
+    for num in data:
+        mask = 1 << 7
+        if n_bytes == 0:
+            while mask & num:
+                n_bytes += 1
+                mask = mask >> 1
+
+            if n_bytes == 0:
+                continue
+
+            if n_bytes == 1 or n_bytes > 4:
+                return False
+        else:
+            if not (num & mask1 and not (num & mask2)):
+                return False
+        n_bytes -= 1
+        return n_bytes == 0
