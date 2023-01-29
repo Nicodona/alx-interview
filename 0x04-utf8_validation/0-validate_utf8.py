@@ -1,86 +1,30 @@
 #!/usr/bin/python3
-
-"""
-Module 0-validate_utf8
-"""
-
-
-def validUTF8_v1(data):
-    """
-    Determines if a given data set
-    represents a valid UTF-8 encoding
-    """
-    count = 0
-
-    if not data:
-        return False
-
-    for num in data:
-        bin_rep = format(num, '#010b')[-8:]
-
-        if count == 0:
-            for bit in bin_rep:
-                if bit == '0':
-                    break
-                count += 1
-
-            if count == 0:
-                continue
-
-            if count == 1 or count > 4:
-                return False
-        else:
-            if not (bin_rep[0] == '1' and bin_rep[1] == '0'):
-                return False
-    return count == 0
+"""UTF-8 validator"""
 
 
 def validUTF8(data):
-    count = 0
+    """
+        Check that a sequence of byte values follows the UTF-8 encoding
+        rules.  Does not check for canonicalization (i.e. overlong encodings
+        are acceptable).
+        """
 
-    if data is None:
-        return False
-
-    for num in data:
-        if count == 0:
-            if num & 128 == 0:
-                count = 0
-            elif num & 224 == 192:
-                count = 1
-            elif num & 240 == 224:
-                count = 2
-            elif num & 248 == 240:
-                count = 3
-            else:
+    data = iter(data)
+    for leading_byte in data:
+        leading_ones = _count_leading_ones(leading_byte)
+        if leading_ones in [1, 7, 8]:
+            return False
+        for _ in range(leading_ones - 1):
+            trailing_byte = next(data, None)
+            if trailing_byte is None or trailing_byte >> 6 != 0b10:
                 return False
-        else:
-            if num & 192 != 128:
-                return False
-    if count == 0:
-        return True
-    return False
+    return True
 
 
-def validUTF8_v4(data):
-    n_bytes = 0
+def _count_leading_ones(byte):
+    """Counts the leading ones."""
 
-    mask1 = 1 << 7
-    mask2 = 1 << 6
-
-    for num in data:
-        mask = 1 << 7
-        if n_bytes == 0:
-            while mask & num:
-                n_bytes += 1
-                mask = mask >> 1
-
-            if n_bytes == 0:
-                continue
-
-            if n_bytes == 1 or n_bytes > 4:
-                return False
-        else:
-            if not (num & mask1 and not (num & mask2)):
-                return False
-        n_bytes -= 1
-        return n_bytes == 0
+    for i in range(8):
+        if byte >> 7 - i == 0b11111111 >> 7 - i & ~1:
+            return i
+    return 8
